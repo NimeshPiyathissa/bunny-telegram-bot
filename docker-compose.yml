@@ -1,0 +1,24 @@
+services:
+  bunny-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bunny-telegram-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 2048M

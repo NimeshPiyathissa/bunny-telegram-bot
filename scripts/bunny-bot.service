@@ -1,0 +1,33 @@
+[Unit]
+Description=Bunny Stream to Telegram Downloader Bot
+Documentation=https://github.com/NimeshPiyathissa/bunny-telegram-bot
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/bunny-stream-telegram-downloader
+ExecStart=/opt/bunny-stream-telegram-downloader/.venv/bin/python /opt/bunny-stream-telegram-downloader/bot.py
+Restart=always
+RestartSec=5s
+KillSignal=SIGINT
+TimeoutStopSec=30s
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+# Resource & File Descriptor Limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Security Hardening
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/bunny-stream-telegram-downloader/data /opt/bunny-stream-telegram-downloader/downloads /opt/bunny-stream-telegram-downloader/temp /opt/bunny-stream-telegram-downloader/logs
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

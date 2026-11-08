@@ -1,0 +1,65 @@
+# Git and GitHub
+.git
+.gitignore
+.github
+
+# Environment and secrets
+.env
+.env.*
+*.env
+secrets/
+*.pem
+*.key
+
+# Telegram sessions
+*.session
+*.session-journal
+*.session*
+
+# Databases and data
+data/*
+!data/.gitkeep
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Runtime directories
+downloads/*
+!downloads/.gitkeep
+temp/*
+!temp/.gitkeep
+logs/*
+!logs/.gitkeep
+backups/
+
+# Logs and media
+*.log
+*.mp4
+*.mkv
+*.webm
+*.part
+*.ytdl
+
+# Python cache & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+
+# Testing and coverage
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

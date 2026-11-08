@@ -1,0 +1,11 @@
+# Auto detect text files and perform LF normalization on checkin
+* text=auto
+
+# Ensure bash scripts and docker files always retain Unix LF line endings
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.service text eol=lf
+*.ini text eol=lf
+
+# PowerShell scripts
+*.ps1 text eol=crlf

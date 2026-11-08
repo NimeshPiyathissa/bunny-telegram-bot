@@ -1,0 +1,118 @@
+# ==============================================================================
+# Bunny Stream Telegram Downloader - Secure .gitignore
+# ==============================================================================
+
+# Environment files & Secrets
+.env
+.env.*
+*.env
+!.env.example
+secrets/
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# Telegram Session & Auth
+*.session
+*.session-journal
+*.session*
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Application Runtime Directories (retain directory structure via .gitkeep)
+/data/*
+!/data/.gitkeep
+
+/downloads/*
+!/downloads/.gitkeep
+
+/temp/*
+!/temp/.gitkeep
+
+/logs/*
+!/logs/.gitkeep
+
+# Video, Audio & Media files (prevent accidental commit of media assets)
+*.mp4
+*.mkv
+*.webm
+*.avi
+*.mov
+*.flv
+*.ts
+*.m4a
+*.mp3
+*.part
+*.ytdl
+*.aria2
+
+# Log files
+*.log
+
+# Backups
+backups/
+*.bak
+*.backup
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Testing & Code Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+
+# Editor & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
