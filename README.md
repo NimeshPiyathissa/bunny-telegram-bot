@@ -1,7 +1,7 @@
-# 🎬 Bunny Stream to Telegram Downloader
-
 <p align="center">
-  <img src="https://raw.githubusercontent.com/NimeshPiyathissa/bunny-telegram-bot/main/assets/banner.png" alt="Bunny Stream Downloader Banner" width="800" onerror="this.style.display='none'"/>
+  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot">
+    <img src="assets/banner.png" alt="BUNNY DL BOT — Premium Bunny Stream to Telegram Downloader" width="100%"/>
+  </a>
 </p>
 
 <p align="center">
@@ -9,67 +9,117 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"/></a>
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"/></a>
+  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-0A84FF?style=for-the-badge&logo=github&logoColor=white" alt="Release v1.0.0"/></a>
+  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-34C759?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"/></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"/></a>
+  <a href="https://ffmpeg.org/"><img src="https://img.shields.io/badge/FFmpeg-7.0+-007808?style=for-the-badge&logo=ffmpeg&logoColor=white" alt="FFmpeg"/></a>
+  <a href="https://docs.pyrogram.org/"><img src="https://img.shields.io/badge/Framework-Pyrogram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Pyrogram"/></a>
+  <a href="https://www.sqlite.org/wal.html"><img src="https://img.shields.io/badge/Database-SQLite%20WAL-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite WAL"/></a>
   <a href="https://ubuntu.com/"><img src="https://img.shields.io/badge/Ubuntu-24.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu 24.04 LTS"/></a>
-  <a href="https://ffmpeg.org/"><img src="https://img.shields.io/badge/FFmpeg-Enabled-007808?style=for-the-badge&logo=ffmpeg&logoColor=white" alt="FFmpeg"/></a>
   <a href="https://docs.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-purple?style=for-the-badge" alt="MIT License"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-FF9500?style=for-the-badge" alt="MIT License"/></a>
 </p>
+
+<p align="center">
+  <a href="#quick-start-60-seconds">⚡ Quick Start</a> •
+  <a href="#key-features">🌟 Features</a> •
+  <a href="#system-architecture">🏗️ Architecture</a> •
+  <a href="#ubuntu-2404-lts-production-deployment-systemd">🐧 Deployment</a> •
+  <a href="#devops--maintenance-tooling">🛠️ DevOps</a> •
+  <a href="#environment-configuration-reference">⚙️ Configuration</a> •
+  <a href="#command-reference">🎮 Commands</a>
+</p>
+
+---
+
+## ⚡ Quick Start (60 Seconds)
+
+Deploy to any Ubuntu 22.04 / 24.04 LTS server in four commands:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/NimeshPiyathissa/bunny-telegram-bot.git /opt/bunny-bot && cd /opt/bunny-bot
+
+# 2. Run automated OS-level provisioner (installs FFmpeg 7+, Python 3.12, .venv)
+sudo bash scripts/setup_ubuntu.sh
+
+# 3. Configure credentials
+cp .env.example .env && nano .env
+
+# 4. Install & launch hardened systemd daemon
+sudo bash scripts/install_service.sh
+```
 
 ---
 
 ## 📑 Table of Contents
 
-- [Key Features](#-key-features)
-- [System Architecture](#-system-architecture)
-- [Video Processing Pipeline](#-video-processing-pipeline)
-- [User Experience & Visual Interface](#-user-experience--visual-interface)
-- [Prerequisites](#-prerequisites)
-- [Ubuntu 24.04 LTS Production Deployment (systemd)](#-ubuntu-2404-lts-production-deployment-systemd)
-- [Docker & Docker Compose Deployment](#-docker--docker-compose-deployment)
-- [Windows 10/11 Development Setup](#-windows-1011-development-setup)
-- [DevOps & Maintenance Tooling](#-devops--maintenance-tooling)
-  - [Automated Backups](#1-automated-atomic-backups)
-  - [Safe Restores](#2-safe-database-restore)
-  - [Zero-Downtime Updates](#3-zero-downtime-application-update)
-  - [System Health Checks](#4-system-health-diagnostics)
-- [Environment Configuration Reference](#-environment-configuration-reference)
-- [Command Reference](#-command-reference)
-- [Security Defenses & Access Control](#-security-defenses--access-control)
-- [Automated Testing & QA](#-automated-testing--qa)
-- [Compliance & Responsible Use](#-compliance--responsible-use)
-- [Contributing & License](#-contributing--license)
+- [Quick Start (60 Seconds)](#quick-start-60-seconds)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Video Processing Pipeline](#video-processing-pipeline)
+- [User Experience & Visual Interface](#user-experience--visual-interface)
+- [Prerequisites](#prerequisites)
+- [Ubuntu 24.04 LTS Production Deployment (systemd)](#ubuntu-2404-lts-production-deployment-systemd)
+- [Docker & Docker Compose Deployment](#docker--docker-compose-deployment)
+- [Windows 10/11 Development Setup](#windows-1011-development-setup)
+- [DevOps & Maintenance Tooling](#devops--maintenance-tooling)
+  - [1. Automated Atomic Backups](#1-automated-atomic-backups)
+  - [2. Safe Database Restore](#2-safe-database-restore)
+  - [3. Zero-Downtime Updates](#3-zero-downtime-application-update)
+  - [4. System Health Diagnostics](#4-system-health-diagnostics)
+- [Environment Configuration Reference](#environment-configuration-reference)
+- [Storage Lifecycle & Automatic Cleanup Architecture](#storage-lifecycle--automatic-cleanup-architecture)
+- [Command Reference](#command-reference)
+- [Security Defenses & Access Control](#security-defenses--access-control)
+- [Automated Testing & QA](#automated-testing--qa)
+- [Compliance & Responsible Use](#compliance--responsible-use)
+- [Contributing & License](#contributing--license)
 
 ---
 
 ## 🌟 Key Features
 
-### 🎥 Intelligent Bunny Stream Ingestion
+| Capability | Technical Implementation | Benefit |
+| :--- | :--- | :--- |
+| **🎥 Intelligent Bunny Stream Ingestion** | yt-dlp & HLS Master Parser with regex URL intake | Resolves `iframe.mediadelivery.net` embeds, queries dynamic manifests, and renders only available resolutions (360p to 4K). |
+| **📐 16:9 Widescreen Optimization** | FFprobe SAR/DAR inspection & Pyrogram stream metadata | Forces native display geometry (`width`, `height`, `duration`), preventing black letterboxing, pillarboxing, and distorted playback. |
+| **🖼️ Aspect-Ratio Preserving Thumbnails** | Frame capture at 10% stream duration with aspect scaling | Generates crisp video cover previews scaled exactly to the source video dimensions. |
+| **✍️ Interactive Rich Caption Engine** | Multi-step Telegram conversation state machine | Preserves rich formatting (bold, italic, code, underline, hyperlinks, Sinhala/Unicode) before queueing. |
+| **⚡ Concurrency & SQLite WAL Queue** | Asyncio Worker Pool + SQLite `WAL` mode (`busy_timeout=10000`) | Non-blocking database transactions, per-user fair limits, worker supervision, and startup stale-job reconciliation. |
+| **📊 Real-Time Throttled Dashboard** | 3-second update throttle with Unicode progress bars | Displays live progress (`████████░░░░ 50%`), speed in MB/s, transferred bytes, and ETA without hitting Telegram `FloodWait`. |
+| **🛡️ Enterprise Zero-Trust Security** | DNS resolution check + RFC 1918 / Cloud Metadata SSRF filters | Blocks private subnets, localhost, and AWS/GCP metadata endpoints. FFmpeg subprocess arguments passed as immutable arrays. |
+| **🧹 Safe Non-Destructive Storage** | Guaranteed delivery confirmation before local deletion | Local temporary files are pruned **only after** Telegram confirms message receipt. Delivered messages are never deleted. |
+
+---
+
+### Detailed Feature Breakdown
+
+#### 🎥 Intelligent Bunny Stream Ingestion
 - **Embed URL Parsing**: Resolves standard Bunny Stream web player embeds (`https://iframe.mediadelivery.net/embed/{library_id}/{video_guid}`) into authorized master HLS playlists and CDN endpoints.
 - **Dynamic Quality Probing**: Probes actual resolutions available on the source manifest (360p, 480p, 720p, 1080p, 1440p, 4K) and renders an interactive Telegram keyboard containing only valid tiers.
 - **Direct & Fallback Stream Handling**: Seamlessly downloads segmented HLS streams or direct MP4 assets, resolving separate audio and video tracks without quality loss.
 
-### 📐 16:9 Native Aspect Ratio & Widescreen Optimization
+#### 📐 16:9 Native Aspect Ratio & Widescreen Optimization
 - **Geometry & SAR/DAR Inspection**: Uses FFprobe to inspect raw dimensions, Sample Aspect Ratio (SAR), Display Aspect Ratio (DAR), and rotation flags.
 - **Distortion-Free Telegram Playback**: Supplies exact display dimensions (`width`, `height`) and `duration` metadata to Telegram's player, preventing black bars, letterboxing distortion, and stretched frames.
 - **Aspect-Ratio Preserving Thumbnails**: Extracts crisp video cover previews from 10% into the stream, scaled precisely to match the source aspect ratio.
 
-### ✍️ Interactive Custom Caption Engine
+#### ✍️ Interactive Custom Caption Engine
 - **Rich-Text Entity Support**: Allows users to input customized video descriptions prior to download, preserving Telegram formatting (bold, italic, code, underline, strikethrough, and hyperlinked text).
 - **Interactive Multi-Step State Flow**: Guided inline UX: Resolution Selection ➔ Custom Caption Prompt (with Skip option) ➔ Preview Confirmation ➔ Queue Submission.
 
-### ⚡ Concurrency Control & Queue Management
+#### ⚡ Concurrency Control & Queue Management
 - **Asyncio Worker Pool**: Dedicated background worker pool throttled by a global concurrency semaphore (`MAX_CONCURRENT_DOWNLOADS`).
 - **Fair-Use Per-User Throttling**: Limits active concurrent downloads per user (`MAX_DOWNLOADS_PER_USER`) with real-time position notices.
 - **Persistent SQLite Job Store**: Records every job lifecycle state (`QUEUED`, `EXTRACTING`, `DOWNLOADING`, `MERGING`, `UPLOADING`, `COMPLETED`, `FAILED`, `CANCELLED`) in an asynchronous SQLite database via SQLAlchemy, with automated WAL (Write-Ahead Logging) journal mode, `busy_timeout=10000`, and concurrent transaction support.
 - **Stale Job Reconciliation**: Automatically cleans up and recovers orphaned in-flight tasks upon bot restarts.
 
-### 📊 Real-Time Throttled Progress Dashboard
+#### 📊 Real-Time Throttled Progress Dashboard
 - **Live Transfer Metrics**: Dynamic Unicode progress bars (`████████░░░░░░░░ 50%`) with downloaded bytes, total file size, real-time speed in MB/s, and accurate ETA countdown.
 - **Telegram Flood Protection**: Throttles status message edits (3-second cooldown) to eliminate Telegram `FloodWait` API penalties.
 
-### 🛡️ Enterprise-Grade Security
+#### 🛡️ Enterprise-Grade Security
 - **Strict SSRF Mitigation**: Pre-resolves domain names and blocks loopback, link-local, private IP spaces (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `169.254.169.254`, `::1`, `fc00::/7`), and cloud metadata APIs.
 - **Subprocess Argument Sanitization**: Invokes FFmpeg via safe argument lists (`asyncio.create_subprocess_exec`) with strict control-character stripping—never through shell string interpolation.
 - **Token & Key Redaction**: Custom logging filter scrubs bot tokens, API hashes, session strings, and signed URLs from disk logs and terminal outputs.
@@ -97,7 +147,7 @@ flowchart TD
         IntakeHandler --> BunnyParser["Bunny Extractor (yt-dlp / HLS)"]
 
         QualityHandler --> QueueManager["Queue Manager & Worker Pool"]
-        QueueManager <--> SQLiteDB[("SQLite Database (bot.db)")]
+        QueueManager <--> SQLiteDB[("SQLite WAL Database (bot.db)")]
 
         QueueManager --> Workers["Async Worker Tasks"]
         Workers --> Downloader["Download Engine (HLS/Direct)"]
@@ -148,8 +198,7 @@ sequenceDiagram
 
 ## 📱 User Experience & Visual Interface
 
-### Interactive Download Flow
-
+### 1. Interactive Main Menu
 ```text
 /start
    │
@@ -171,6 +220,7 @@ Your Premium Video Download Assistant
 [ ⚙️ Settings ]       [ ❓ Help ]
 ```
 
+### 2. URL Intake & Quality Selection
 ```text
 User submits embed link:
 https://iframe.mediadelivery.net/embed/12345/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
@@ -187,6 +237,7 @@ Select desired download resolution:
 [ ❌ Cancel ]
 ```
 
+### 3. Custom Rich Caption Prompt
 ```text
 User selects [ 1080p ]:
    │
@@ -201,6 +252,7 @@ Rich text formatting (bold, italic, code, links) will be preserved.
 [ ❌ Cancel Download ]
 ```
 
+### 4. Live Transfer Dashboard
 ```text
 Live Throttled Progress Dashboard:
    │
@@ -223,15 +275,15 @@ Status: Downloading stream segments...
 
 ## 📋 Prerequisites
 
-| Component | Minimum Version | Recommended Version |
-| :--- | :--- | :--- |
-| **Operating System** | Ubuntu 22.04 LTS / Windows 10 | **Ubuntu 24.04 LTS** / Windows 11 |
-| **Python** | 3.11 | **3.12+** |
-| **FFmpeg** | 5.0 | **7.0+** (with `libx264`, `aac`, `ffprobe`) |
-| **SQLite** | 3.35+ | **3.40+** (CLI utility recommended for backups) |
-| **RAM** | 1 GB | **2 GB+** |
-| **Disk** | 5 GB SSD free space | **25 GB+ NVMe SSD** |
-| **Telegram Credentials** | Valid `API_ID` & `API_HASH` ([my.telegram.org](https://my.telegram.org)) + Bot Token ([@BotFather](https://t.me/BotFather)) |
+| Component | Minimum Version | Recommended Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Operating System** | Ubuntu 22.04 LTS / Windows 10 | **Ubuntu 24.04 LTS** / Windows 11 | Host operating system |
+| **Python** | 3.11 | **3.12+** | Async runtime environment |
+| **FFmpeg** | 5.0 | **7.0+** (with `libx264`, `aac`, `ffprobe`) | Lossless stream remuxing & metadata probe |
+| **SQLite** | 3.35+ | **3.40+** (with WAL mode support) | Concurrent transactional job storage |
+| **RAM** | 1 GB | **2 GB+** | Segment buffering and remux operations |
+| **Disk** | 5 GB SSD free space | **25 GB+ NVMe SSD** | Temporary video processing storage |
+| **Telegram API** | Valid Credentials | Bot Token ([@BotFather](https://t.me/BotFather)) + API ID/Hash ([my.telegram.org](https://my.telegram.org)) | Telegram client communication |
 
 ---
 
@@ -244,7 +296,7 @@ Ubuntu 24.04 LTS (Noble Numbat) is the primary targeted server platform. The aut
 # Navigate to deployment directory
 cd /opt
 
-# Clone your repository
+# Clone repository
 sudo git clone https://github.com/NimeshPiyathissa/bunny-telegram-bot.git bunny-bot
 cd bunny-bot
 
@@ -339,16 +391,16 @@ python bot.py
 
 ## 🛠️ DevOps & Maintenance Tooling
 
-The `scripts/` directory contains hardened operational tools designed for production maintenance.
+The [`scripts/`](scripts/) directory contains hardened operational tools designed for production maintenance.
 
 ### 1. Automated Atomic Backups
-Performs an online, non-blocking snapshot of SQLite (`data/bot.db`) and archives `.env` with restricted 600 permissions. Automatically prunes archives older than 30 days.
+Performs an online, non-blocking snapshot of SQLite (`data/bot.db`), capturing active WAL (`-wal`) and shared memory (`-shm`) journals, and archives `.env` with restricted 600 permissions. Automatically prunes archives older than 30 days.
 ```bash
 bash scripts/backup.sh
 ```
 
 ### 2. Safe Database Restore
-Verifies backup archive integrity with `PRAGMA integrity_check`, safely stops the service to prevent database lockups, creates a safety snapshot of the active database, and performs an atomic restore.
+Verifies backup archive integrity with `PRAGMA integrity_check`, safely stops the service to prevent database lockups, creates a safety snapshot of the active database, cleans old WAL files, and performs an atomic restore.
 ```bash
 bash scripts/restore.sh backups/bot_db_20261108_120000.db
 ```
@@ -407,7 +459,7 @@ The bot employs a safe, non-destructive storage management architecture designed
 3. **Strict Message Preservation**:
    The bot **never** calls `delete_messages` or deletes delivered Telegram messages during local cleanup.
 4. **Protected System & User Files**:
-   Cleanup operations are strictly bounded to `temp/` and `downloads/`. The application database (`data/bot.db`), Telegram sessions (`*.session*`), `.env`, and source files are immutably excluded from deletion.
+   Cleanup operations are strictly bounded to `temp/` and `downloads/`. The application database (`data/bot.db`), database journals (`-wal`, `-shm`), Telegram sessions (`*.session*`), `.env`, and source files are immutably excluded from deletion.
 5. **Cross-Platform Lock Handling**:
    On Windows workstations, file locks (`PermissionError` / `WinError 32`) are handled via automated garbage collection (`gc.collect()`), read-only flag removal, and exponential retry backoff.
 6. **Bounded Upload Retries & Uncertain Delivery**:
@@ -466,15 +518,19 @@ source .venv/bin/activate   # or .\.venv\Scripts\Activate.ps1 on Windows
 pytest -v --tb=short
 ```
 
-### Test Suite Coverage:
-- **`tests/test_aspect_ratio.py`**: Validates 16:9 widescreen detection, Display Aspect Ratio (DAR), Sample Aspect Ratio (SAR), rotation correction, and thumbnail aspect preservation.
-- **`tests/test_caption.py`**: Validates interactive caption state flow, formatted entity preservation (bold, italic, code, underline), skip options, and edit cycles.
-- **`tests/test_urls.py`**: Validates Bunny embed URL pattern matching, GUID extraction, parameter sanitization, and invalid domain rejection.
-- **`tests/test_extractor.py`**: Validates yt-dlp format detection, HLS manifest parsing, and 403 Forbidden handling.
-- **`tests/test_download.py`**: Tests FFmpeg lossless remuxing, MP4 `ftyp` magic bytes validation, and document fallback.
-- **`tests/test_queue.py`**: Verifies worker pool concurrency limits, per-user limits, cancellation events, and stale job startup reconciliation.
-- **`tests/test_security.py`**: Tests SSRF blocks against private IP spaces, cloud metadata addresses, and command injection attacks.
-- **`tests/test_handlers.py`**: Tests HTML parser compatibility with Telegram message length constraints and menu routing.
+### Test Suite Coverage
+
+| Test Module | Coverage Scope | Status |
+| :--- | :--- | :---: |
+| **`tests/test_aspect_ratio.py`** | 16:9 widescreen detection, Display Aspect Ratio (DAR), Sample Aspect Ratio (SAR), rotation correction, and thumbnail aspect preservation | **10 Passed** |
+| **`tests/test_caption.py`** | Interactive caption state flow, rich text entity preservation (bold, italic, code, underline), skip options, and edit cycles | **8 Passed** |
+| **`tests/test_urls.py`** | Bunny embed URL pattern matching, GUID extraction, parameter sanitization, and invalid domain rejection | **5 Passed** |
+| **`tests/test_extractor.py`** | yt-dlp format detection, HLS manifest parsing, and 403 Forbidden handling | **4 Passed** |
+| **`tests/test_download.py`** | FFmpeg lossless remuxing, MP4 `ftyp` magic bytes validation, and document fallback | **12 Passed** |
+| **`tests/test_queue.py`** | Worker pool concurrency limits, per-user limits, cancellation events, and stale job startup reconciliation | **12 Passed** |
+| **`tests/test_security.py`** | SSRF blocks against private IP spaces, cloud metadata addresses, and command injection attacks | **5 Passed** |
+| **`tests/test_handlers.py`** | HTML parser compatibility with Telegram message length constraints and menu routing | **8 Passed** |
+| **`tests/test_vps_release.py`** | Delivery lifecycle contract, safe deletion, SQLite WAL mode & concurrency, and deployment script validation | **12 Passed** |
 
 ---
 
