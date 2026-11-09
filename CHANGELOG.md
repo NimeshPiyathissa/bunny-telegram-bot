@@ -39,14 +39,15 @@ An exhaustive performance audit and acceleration suite addressing download and u
 
 #### 🧪 Expanded Test Suite
 - Added 13 speed optimization and concurrency unit tests (`tests/test_speed_optimizations.py`).
-- Added 6 compatibility, upload cancellation, and startup regression tests (`tests/test_upload_cancellation_and_compat.py`).
-- Full test suite expanded to **95 tests passing in ~25s** with 100% success rate.
+- Added 11 compatibility, upload cancellation, thread-safety, and startup regression tests (`tests/test_upload_cancellation_and_compat.py`).
+- Full test suite expanded to **100 tests passing in ~30s** with 100% success rate.
 
-#### 🔧 Production Compatibility & Upload Cancellation Hotfix
-- **Corrected Pyrogram API Import**: Fixed `ModuleNotFoundError: No module named 'pyrogram.stop_transmission'` by utilizing Pyrogram's supported public API `from pyrogram import StopTransmission` with fallback class.
-- **Python 3.12 Event Loop Compatibility**: Ensured `create_app()` initializes active event loop on the current thread in Python 3.12 environments before Pyrogram `Client` instantiation.
-- **Reliable Upload Cancellation**: Handled `StopTransmission` propagation from `upload_progress` across `fast_save_file`, `UploadService`, and `_process_download` with clean worker termination, session teardown, and workspace file cleanup.
-- **Safe Native Fallback**: Added automatic fallback in `fast_save_file` to native single-session `save_file` if multi-session fast upload encounters unexpected network/RPC exceptions.
+#### 🔧 Critical Production Hotfix: Thread-Safe Upload Callbacks & Null Writer Prevention
+- **Thread-Safe Event Loop Dispatch**: Captured the active running event loop inside `_process_download()` and used `asyncio.run_coroutine_threadsafe()` to schedule `_update_upload_progress()` and `_update_progress()`. This eliminates `RuntimeError: no running event loop` when Pyrogram invokes progress callbacks from threadpool executor worker threads.
+- **Eliminated Coroutine Warnings**: Ensured progress coroutines are only instantiated after the throttle window has elapsed and explicitly closed if scheduling fails, completely eliminating `RuntimeWarning: coroutine was never awaited`.
+- **Resolved NoneType Writer Crash**: Fixed `'NoneType' object has no attribute 'write'` by ensuring `fast_save_file` awaits full queue draining before completion and raises a clear `RuntimeError` if native Pyrogram `save_file` returns `None`, preventing `InputMediaUploadedDocument` from receiving a null file object.
+- **Robust Worker Lifecycle**: Ensured upload worker queues are drained gracefully with sentinel values rather than cancelled prematurely, preventing dropped final chunks.
+- **Safe Fallback Protection**: Preserved fast multi-session uploader with automatic fallback to native Pyrogram `save_file`.
 
 ---
 

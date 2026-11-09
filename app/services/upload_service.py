@@ -77,6 +77,8 @@ class UploadService:
         has_thumb = await FFmpegService.generate_thumbnail(
             file_path, thumb_path, duration=duration, metadata=metadata
         )
+        if has_thumb and (not Path(thumb_path).exists() or Path(thumb_path).stat().st_size == 0):
+            has_thumb = False
 
         safe_name = sanitize_filename(title) + ".mp4"
 
@@ -112,6 +114,8 @@ class UploadService:
                 client.send_video(**send_video_kwargs),
                 timeout=self.timeout
             )
+            if message is None:
+                raise RuntimeError("Telegram video upload failed: send_video returned None")
             return message
         except (StopTransmission, asyncio.CancelledError):
             logger.info(f"Telegram video upload cancelled for {safe_name}.")
@@ -135,6 +139,8 @@ class UploadService:
                     ),
                     timeout=self.timeout
                 )
+                if message is None:
+                    raise RuntimeError("Telegram document upload failed: send_document returned None")
                 return message
             except (StopTransmission, asyncio.CancelledError):
                 logger.info(f"Telegram document fallback upload cancelled for {safe_name}.")
@@ -183,6 +189,8 @@ class UploadService:
                 ),
                 timeout=self.timeout
             )
+            if message is None:
+                raise RuntimeError("Telegram document upload failed: send_document returned None")
             return message
         except (StopTransmission, asyncio.CancelledError):
             logger.info(f"Telegram document upload cancelled for {safe_name}.")

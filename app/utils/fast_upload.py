@@ -103,6 +103,8 @@ async def fast_save_file(
 
         queue = asyncio.Queue(workers_count * 2)
 
+        worker_error = [None]
+
         async def worker(sess: Session):
             while True:
                 data = await queue.get()
@@ -119,11 +121,15 @@ async def fast_save_file(
                             await asyncio.sleep(0.5 * (attempt + 1))
                         else:
                             logger.error(f"[UPLOAD:CHUNK_ERR] Failed chunk RPC: {e}")
+                            worker_error[0] = e
+                            return
 
         workers = [
             client.loop.create_task(worker(sessions[i % num_sessions]))
             for i in range(workers_count)
         ]
+
+        upload_completed = False
 
         try:
             # Start all sessions concurrently
@@ -174,8 +180,18 @@ async def fast_save_file(
                     except StopTransmission:
                         logger.info("[UPLOAD:CANCEL] Transmission cancelled via progress callback.")
                         raise
-                    except Exception:
-                        pass
+                    except Exception as prog_err:
+                        logger.debug(f"[UPLOAD:PROGRESS_WARN] Progress callback error: {prog_err}")
+
+            # Notify workers that all chunks have been queued and wait for completion
+            for _ in workers:
+                await queue.put(None)
+            await asyncio.gather(*workers)
+
+            if worker_error[0] is not None:
+                raise worker_error[0]
+
+            upload_completed = True
 
         except StopTransmission:
             logger.info("[UPLOAD:CANCEL] Transmission stopped cleanly via StopTransmission.")
@@ -194,29 +210,36 @@ async def fast_save_file(
                         fp.close()
                     except Exception:
                         pass
-                return await _original_save_file(
+                res = await _original_save_file(
                     client, path, file_id=file_id, file_part=file_part,
                     progress=progress, progress_args=progress_args
                 )
+                if res is None:
+                    raise RuntimeError(f"Native Pyrogram save_file failed to upload {path} (returned None)")
+                return res
             raise
         else:
             if is_big:
-                return raw.types.InputFileBig(
+                res = raw.types.InputFileBig(
                     id=file_id,
                     parts=file_total_parts,
                     name=str(file_name),
                 )
             else:
-                return raw.types.InputFile(
+                res = raw.types.InputFile(
                     id=file_id,
                     parts=file_total_parts,
                     name=str(file_name),
                     md5_checksum=md5_sum,
                 )
+            if res is None:
+                raise RuntimeError(f"Fast upload failed to generate InputFile for {path}")
+            return res
         finally:
-            # Drain workers safely without blocking if queue is full
-            for w in workers:
-                w.cancel()
+            if not upload_completed:
+                # Cancel pending workers if upload aborted prematurely
+                for w in workers:
+                    w.cancel()
             await asyncio.gather(*workers, return_exceptions=True)
 
             # Terminate sessions cleanly

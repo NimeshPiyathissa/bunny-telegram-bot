@@ -385,6 +385,7 @@ async def _process_download(
 
     # Progress tracking
     last_edit_time = [0.0]
+    main_loop = asyncio.get_running_loop()
 
     def progress_callback(progress: DownloadProgress):
         # Throttle message edits (max once per 3 seconds)
@@ -393,7 +394,12 @@ async def _process_download(
             return
         last_edit_time[0] = now
 
-        asyncio.create_task(_update_progress(message, extraction, progress))
+        if main_loop and not main_loop.is_closed():
+            coro = _update_progress(message, extraction, progress)
+            try:
+                asyncio.run_coroutine_threadsafe(coro, main_loop)
+            except Exception:
+                coro.close()
 
     result: Optional[DownloadResult] = None
     final_status = "FAILED"
@@ -560,6 +566,7 @@ async def _process_download(
 
         upload_start_time = time.monotonic()
         upload_last_edit = [0.0]
+        upload_loop = asyncio.get_running_loop()
 
         def upload_progress(current, total):
             if job and job.cancel_event.is_set():
@@ -570,11 +577,14 @@ async def _process_download(
                 return
             upload_last_edit[0] = now
 
-            asyncio.create_task(
-                _update_upload_progress(
+            if upload_loop and not upload_loop.is_closed():
+                coro = _update_upload_progress(
                     message, extraction, current, total, upload_start_time, job_id
                 )
-            )
+                try:
+                    asyncio.run_coroutine_threadsafe(coro, upload_loop)
+                except Exception:
+                    coro.close()
 
         upload_service = UploadService(
             config.max_file_size_bytes, timeout=config.UPLOAD_TIMEOUT_SECONDS
