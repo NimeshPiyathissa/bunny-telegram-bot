@@ -24,9 +24,17 @@ import pyrogram
 from pyrogram import raw, utils
 from pyrogram.errors import RPCError
 from pyrogram.session import Session
-from pyrogram.stop_transmission import StopTransmission
+
+try:
+    from pyrogram import StopTransmission
+except ImportError:
+    class StopTransmission(Exception):
+        """Exception raised in progress callbacks to stop file transmission."""
+        pass
 
 logger = logging.getLogger(__name__)
+
+_original_save_file = None
 
 
 async def fast_save_file(
@@ -163,13 +171,33 @@ async def fast_save_file(
                             client.loop.create_task(progress(current_bytes, file_size, *progress_args))
                         else:
                             progress(current_bytes, file_size, *progress_args)
+                    except StopTransmission:
+                        logger.info("[UPLOAD:CANCEL] Transmission cancelled via progress callback.")
+                        raise
                     except Exception:
                         pass
 
         except StopTransmission:
+            logger.info("[UPLOAD:CANCEL] Transmission stopped cleanly via StopTransmission.")
+            raise
+        except asyncio.CancelledError:
+            logger.info("[UPLOAD:CANCEL] Upload task cancelled.")
             raise
         except Exception as e:
-            logger.exception(f"[UPLOAD:FATAL] Fast upload error: {e}")
+            logger.warning(
+                f"[UPLOAD:FALLBACK] Multi-session fast upload error ({e}). "
+                f"Falling back to native Pyrogram save_file..."
+            )
+            if _original_save_file is not None and not is_missing_part:
+                if isinstance(path, (str, PurePath)):
+                    try:
+                        fp.close()
+                    except Exception:
+                        pass
+                return await _original_save_file(
+                    client, path, file_id=file_id, file_part=file_part,
+                    progress=progress, progress_args=progress_args
+                )
             raise
         else:
             if is_big:
@@ -186,9 +214,9 @@ async def fast_save_file(
                     md5_checksum=md5_sum,
                 )
         finally:
-            # Terminate workers
-            for _ in workers:
-                await queue.put(None)
+            # Drain workers safely without blocking if queue is full
+            for w in workers:
+                w.cancel()
             await asyncio.gather(*workers, return_exceptions=True)
 
             # Terminate sessions cleanly
@@ -202,7 +230,10 @@ async def fast_save_file(
 
 
 def patch_pyrogram_uploader():
-    """Hook fast_save_file into Pyrogram's SaveFile mixin class."""
+    """Hook fast_save_file into Pyrogram's SaveFile mixin class with fallback support."""
+    global _original_save_file
     from pyrogram.methods.advanced.save_file import SaveFile
+    if _original_save_file is None:
+        _original_save_file = SaveFile.save_file
     SaveFile.save_file = fast_save_file
     logger.info("[UPLOAD:PATCH] Pyrogram save_file hooked with multi-session fast uploader.")

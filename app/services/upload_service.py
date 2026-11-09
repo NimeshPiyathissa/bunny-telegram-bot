@@ -8,6 +8,12 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message
 
+try:
+    from pyrogram import StopTransmission
+except ImportError:
+    class StopTransmission(Exception):
+        pass
+
 from app.services.ffmpeg_service import FFmpegService
 from app.utils.formatters import sanitize_filename
 from app.utils.validators import check_file_size
@@ -107,6 +113,9 @@ class UploadService:
                 timeout=self.timeout
             )
             return message
+        except (StopTransmission, asyncio.CancelledError):
+            logger.info(f"Telegram video upload cancelled for {safe_name}.")
+            raise
         except asyncio.TimeoutError:
             logger.error(f"Telegram video upload timed out after {self.timeout}s.")
             raise TimeoutError(f"Telegram upload timed out after {self.timeout}s. The network connection may be slow.")
@@ -127,6 +136,9 @@ class UploadService:
                     timeout=self.timeout
                 )
                 return message
+            except (StopTransmission, asyncio.CancelledError):
+                logger.info(f"Telegram document fallback upload cancelled for {safe_name}.")
+                raise
             except asyncio.TimeoutError:
                 logger.error(f"Telegram document fallback upload timed out after {self.timeout}s.")
                 raise TimeoutError(f"Telegram upload timed out after {self.timeout}s.")
@@ -160,14 +172,18 @@ class UploadService:
         else:
             caption_kwargs["parse_mode"] = ParseMode.HTML
 
-        message = await asyncio.wait_for(
-            client.send_document(
-                chat_id=chat_id,
-                document=file_path,
-                file_name=safe_name,
-                progress=progress_callback,
-                **caption_kwargs,
-            ),
-            timeout=self.timeout
-        )
-        return message
+        try:
+            message = await asyncio.wait_for(
+                client.send_document(
+                    chat_id=chat_id,
+                    document=file_path,
+                    file_name=safe_name,
+                    progress=progress_callback,
+                    **caption_kwargs,
+                ),
+                timeout=self.timeout
+            )
+            return message
+        except (StopTransmission, asyncio.CancelledError):
+            logger.info(f"Telegram document upload cancelled for {safe_name}.")
+            raise

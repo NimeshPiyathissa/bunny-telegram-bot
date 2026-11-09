@@ -10,6 +10,12 @@ from pyrogram import Client, filters
 from pyrogram.enums import ParseMode
 from pyrogram.types import CallbackQuery, Message
 
+try:
+    from pyrogram import StopTransmission
+except ImportError:
+    class StopTransmission(Exception):
+        pass
+
 from app.keyboards.main import back_keyboard, cancel_keyboard
 from app.keyboards.quality import quality_keyboard
 from app.keyboards.caption import caption_input_keyboard, caption_confirm_keyboard
@@ -556,6 +562,9 @@ async def _process_download(
         upload_last_edit = [0.0]
 
         def upload_progress(current, total):
+            if job and job.cancel_event.is_set():
+                raise StopTransmission
+
             now = time.monotonic()
             if now - upload_last_edit[0] < 2.5 and current < total:
                 return
@@ -651,6 +660,11 @@ async def _process_download(
                 else:
                     raise RuntimeError("Telegram upload completed without returning a valid message object.")
 
+            except (StopTransmission, asyncio.CancelledError):
+                final_status = "CANCELLED"
+                error_to_record = "Cancelled by user"
+                logger.info(f"Upload for job {job_id} cancelled by user.")
+                break
             except Exception as upload_err:
                 last_upload_error = upload_err
                 err_str = str(upload_err).lower()

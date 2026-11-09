@@ -39,7 +39,14 @@ An exhaustive performance audit and acceleration suite addressing download and u
 
 #### 🧪 Expanded Test Suite
 - Added 13 speed optimization and concurrency unit tests (`tests/test_speed_optimizations.py`).
-- Full test suite expanded to **89 tests passing in 20.34s** with 100% success rate.
+- Added 6 compatibility, upload cancellation, and startup regression tests (`tests/test_upload_cancellation_and_compat.py`).
+- Full test suite expanded to **95 tests passing in ~25s** with 100% success rate.
+
+#### 🔧 Production Compatibility & Upload Cancellation Hotfix
+- **Corrected Pyrogram API Import**: Fixed `ModuleNotFoundError: No module named 'pyrogram.stop_transmission'` by utilizing Pyrogram's supported public API `from pyrogram import StopTransmission` with fallback class.
+- **Python 3.12 Event Loop Compatibility**: Ensured `create_app()` initializes active event loop on the current thread in Python 3.12 environments before Pyrogram `Client` instantiation.
+- **Reliable Upload Cancellation**: Handled `StopTransmission` propagation from `upload_progress` across `fast_save_file`, `UploadService`, and `_process_download` with clean worker termination, session teardown, and workspace file cleanup.
+- **Safe Native Fallback**: Added automatic fallback in `fast_save_file` to native single-session `save_file` if multi-session fast upload encounters unexpected network/RPC exceptions.
 
 ---
 

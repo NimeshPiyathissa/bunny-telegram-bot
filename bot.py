@@ -23,6 +23,13 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> Client:
     """Create and configure the Pyrogram client with crypto and transmission acceleration."""
+    # Ensure an active event loop exists in Python 3.12 environments before Client initialization
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     setup_crypto_patch()
     patch_pyrogram_uploader()
     app = Client(
