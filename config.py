@@ -31,6 +31,8 @@ class Config:
     MAX_FILE_SIZE_MB: int = 1900
     DOWNLOAD_TIMEOUT_SECONDS: int = 3600
     UPLOAD_TIMEOUT_SECONDS: int = 1800
+    HLS_CONCURRENT_SEGMENTS: int = 10
+    MAX_CONCURRENT_TRANSMISSIONS: int = 4
 
     # Storage & Cleanup Lifecycle Settings
     AUTO_CLEANUP: bool = True
@@ -79,6 +81,8 @@ class Config:
             MAX_FILE_SIZE_MB=_safe_int("MAX_FILE_SIZE_MB", "1900"),
             DOWNLOAD_TIMEOUT_SECONDS=_safe_int("DOWNLOAD_TIMEOUT_SECONDS", "3600"),
             UPLOAD_TIMEOUT_SECONDS=_safe_int("UPLOAD_TIMEOUT_SECONDS", "1800"),
+            HLS_CONCURRENT_SEGMENTS=_safe_int("HLS_CONCURRENT_SEGMENTS", "10"),
+            MAX_CONCURRENT_TRANSMISSIONS=_safe_int("MAX_CONCURRENT_TRANSMISSIONS", "4"),
             AUTO_CLEANUP=_get_env("AUTO_CLEANUP", "true").lower() == "true",
             CLEANUP_AFTER_UPLOAD=_get_env("CLEANUP_AFTER_UPLOAD", "true").lower() == "true",
             FAILED_JOB_RETENTION_HOURS=_safe_int("FAILED_JOB_RETENTION_HOURS", "24"),
@@ -146,6 +150,10 @@ class Config:
             errors.append("MAX_CONCURRENT_DOWNLOADS must be greater than 0")
         if self.MAX_DOWNLOADS_PER_USER <= 0:
             errors.append("MAX_DOWNLOADS_PER_USER must be greater than 0")
+        if self.HLS_CONCURRENT_SEGMENTS <= 0:
+            errors.append("HLS_CONCURRENT_SEGMENTS must be greater than 0")
+        if self.MAX_CONCURRENT_TRANSMISSIONS <= 0:
+            errors.append("MAX_CONCURRENT_TRANSMISSIONS must be greater than 0")
         if self.MIN_FREE_DISK_GB < 1:
             errors.append("MIN_FREE_DISK_GB must be at least 1 GB")
         if self.FAILED_JOB_RETENTION_HOURS <= 0:

@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import config
 from app.utils.logger import setup_logging
+from app.utils.crypto_patch import setup_crypto_patch
+from app.utils.fast_upload import patch_pyrogram_uploader
 from app.database.models import init_db
 from app.services.queue_manager import QueueManager
 from app.services.cleanup_service import CleanupService
@@ -20,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> Client:
-    """Create and configure the Pyrogram client."""
+    """Create and configure the Pyrogram client with crypto and transmission acceleration."""
+    setup_crypto_patch()
+    patch_pyrogram_uploader()
     app = Client(
         name="bunny_bot",
         api_id=config.API_ID,
@@ -28,6 +32,7 @@ def create_app() -> Client:
         bot_token=config.BOT_TOKEN,
         workdir=str(Path(__file__).parent / "data"),
         parse_mode=ParseMode.HTML,
+        max_concurrent_transmissions=config.MAX_CONCURRENT_TRANSMISSIONS,
     )
     return app
 

@@ -10,6 +10,7 @@ from typing import Callable, Optional
 import yt_dlp
 
 from app.services.bunny_extractor import ExtractionResult, VideoFormat, AudioFormat
+from app.services.hls_downloader import ConcurrentHLSDownloader
 from app.utils.formatters import sanitize_filename
 from app.utils.security import sanitize_subprocess_arg
 
@@ -44,11 +45,19 @@ class DownloadResult:
 class DownloadEngine:
     """Handles downloading video and audio streams with timeouts and subprocess lifecycle management."""
 
-    def __init__(self, download_dir: str, temp_dir: str, timeout: int = 3600, job_id: Optional[str] = None):
+    def __init__(
+        self,
+        download_dir: str,
+        temp_dir: str,
+        timeout: int = 3600,
+        job_id: Optional[str] = None,
+        hls_concurrency: int = 10,
+    ):
         self.download_dir = Path(download_dir)
         self.temp_dir = Path(temp_dir)
         self.timeout = timeout
         self.job_id = job_id
+        self.hls_concurrency = max(1, min(hls_concurrency, 32))
         self._cancelled = False
         self._current_process: Optional[asyncio.subprocess.Process] = None
 
@@ -94,8 +103,8 @@ class DownloadEngine:
 
         try:
             if selected_format.url.endswith('.m3u8') or 'hls' in selected_format.format_id or '.m3u8' in selected_format.url:
-                # HLS download via FFmpeg
-                result = await self._download_hls(
+                # High-speed concurrent segment HLS download with automatic FFmpeg fallback
+                result = await self._download_hls_concurrent(
                     selected_format.url, safe_title, job_id, result, progress_callback, referer=referer
                 )
             elif extraction.direct_url:
@@ -190,6 +199,9 @@ class DownloadEngine:
             'socket_timeout': 30,
             'retries': 3,
             'fragment_retries': 5,
+            'concurrent_fragment_downloads': self.hls_concurrency,
+            'buffersize': 1024 * 1024,
+            'http_chunk_size': 10485760,
             'http_headers': {
                 'Referer': referer,
                 'User-Agent': user_agent,
@@ -226,6 +238,56 @@ class DownloadEngine:
             result.error = "Download completed but output file not found or is empty."
 
         return result
+
+    async def _download_hls_concurrent(
+        self, m3u8_url: str, safe_title: str, job_id: str,
+        result: DownloadResult, progress_cb: Optional[Callable],
+        referer: str = "https://iframe.mediadelivery.net/"
+    ) -> DownloadResult:
+        """Download HLS stream concurrently with safe fallback to FFmpeg."""
+        output_path = self.workspace / f"{job_id}_{safe_title}.mp4"
+
+        try:
+            downloader = ConcurrentHLSDownloader(
+                playlist_url=m3u8_url,
+                output_path=output_path,
+                workspace=self.workspace,
+                concurrency=self.hls_concurrency,
+                timeout=self.timeout,
+                referer=referer,
+                progress_cb=progress_cb,
+                cancel_check=lambda: self._cancelled,
+            )
+            success, out_path, size, err = await downloader.download()
+
+            if success and out_path and Path(out_path).exists() and Path(out_path).stat().st_size > 0:
+                result.success = True
+                result.output_path = str(out_path)
+                result.file_size = size
+                return result
+
+            # Specific authorization check
+            if err and ("403" in err or "forbidden" in err.lower()):
+                result.error = (
+                    "Access denied (403 Forbidden). "
+                    "The Bunny Stream media source requires token authorization from the content owner."
+                )
+                return result
+
+            logger.warning(
+                f"[HLS:FALLBACK] Concurrent HLS download did not complete ({err}). "
+                f"Falling back to standard FFmpeg stream download..."
+            )
+        except Exception as e:
+            logger.warning(
+                f"[HLS:FALLBACK] Concurrent HLS exception ({e}). "
+                f"Falling back to standard FFmpeg stream download..."
+            )
+
+        # Fallback to standard FFmpeg stream download
+        return await self._download_hls(
+            m3u8_url, safe_title, job_id, result, progress_cb, referer=referer
+        )
 
     async def _download_hls(
         self, m3u8_url: str, safe_title: str, job_id: str,

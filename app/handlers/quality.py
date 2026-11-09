@@ -357,13 +357,14 @@ async def _process_download(
     if extraction.needs_merge and extraction.audio_formats:
         audio_format = extraction.audio_formats[0]  # Best quality
 
-    # Create download engine with configured timeout and per-job isolated workspace
+    # Create download engine with configured timeout, isolated workspace, and concurrent HLS
     workspace_dir = None
     engine = DownloadEngine(
         download_dir=config.DOWNLOAD_DIRECTORY,
         temp_dir=config.TEMP_DIRECTORY,
         timeout=config.DOWNLOAD_TIMEOUT_SECONDS,
         job_id=job_id,
+        hls_concurrency=getattr(config, "HLS_CONCURRENT_SEGMENTS", 10),
     )
     workspace_dir = str(engine.workspace)
     try:
@@ -393,6 +394,11 @@ async def _process_download(
     error_to_record: Optional[str] = None
     output_path: Optional[str] = None
 
+    pipeline_start_time = time.monotonic()
+    dl_start_time = time.monotonic()
+    dl_duration = 0.0
+    dl_speed_mbs = 0.0
+
     try:
         # 1. Update status to DOWNLOADING
         await queue_manager.update_job_status(job_id, "DOWNLOADING")
@@ -403,12 +409,18 @@ async def _process_download(
             return
 
         # 2. Download authorized video & audio streams
+        dl_start_time = time.monotonic()
         result = await engine.download(
             extraction=extraction,
             selected_format=selected_format,
             audio_format=audio_format,
             progress_callback=progress_callback,
         )
+        dl_end_time = time.monotonic()
+        dl_duration = max(0.001, dl_end_time - dl_start_time)
+        res_size = getattr(result, "file_size", 0)
+        if isinstance(res_size, (int, float)) and res_size > 0:
+            dl_speed_mbs = (res_size / (1024 * 1024)) / dl_duration
 
         if not result.success:
             final_status = "FAILED"
@@ -540,32 +552,19 @@ async def _process_download(
         # 6. Upload to Telegram
         await queue_manager.update_job_status(job_id, "UPLOADING")
 
+        upload_start_time = time.monotonic()
         upload_last_edit = [0.0]
 
-        async def upload_progress(current, total):
+        def upload_progress(current, total):
             now = time.monotonic()
-            if now - upload_last_edit[0] < 3.0:
+            if now - upload_last_edit[0] < 2.5 and current < total:
                 return
             upload_last_edit[0] = now
 
-            pct = (current / total * 100) if total > 0 else 0
-            bar = make_progress_bar(pct / 100)
-
-            try:
-                await message.edit_text(
-                    f"📤 <b>UPLOADING TO TELEGRAM</b>\n\n"
-                    f"━━━━━━━━━━━━━━━━━━\n\n"
-                    f"🎬 <b>{extraction.title}</b>\n\n"
-                    f"{bar} {pct:.0f}%\n\n"
-                    f"📦 {format_size(current)} / {format_size(total)}\n\n"
-                    f"<i>Status: Uploading to Telegram...</i>",
-                    parse_mode=ParseMode.HTML,
+            asyncio.create_task(
+                _update_upload_progress(
+                    message, extraction, current, total, upload_start_time, job_id
                 )
-            except Exception:
-                pass
-
-            await JobRepository.update_progress(
-                job_id, upload_progress=pct, file_size=file_size
             )
 
         upload_service = UploadService(
@@ -593,6 +592,8 @@ async def _process_download(
         max_upload_retries = 3
         uploaded_msg = None
         last_upload_error = None
+        ul_duration = 0.0
+        ul_speed_mbs = 0.0
 
         for attempt in range(max_upload_retries):
             # Check cancellation between retries
@@ -626,6 +627,11 @@ async def _process_download(
                             else None
                         )
                     )
+
+                    ul_end_time = time.monotonic()
+                    ul_duration = max(0.001, ul_end_time - upload_start_time)
+                    if isinstance(file_size, (int, float)) and file_size > 0:
+                        ul_speed_mbs = (file_size / (1024 * 1024)) / ul_duration
 
                     # Persist completed status and Telegram message ID / file ID
                     final_status = "COMPLETED"
@@ -688,13 +694,19 @@ async def _process_download(
             formatted_size = format_size(file_size)
             quality_tag = selected_format.quality or "Default"
             safe_title = html.escape(extraction.title)
+            total_pipeline_duration = max(0.001, time.monotonic() - pipeline_start_time)
 
             completion_text = (
                 "✅ <b>DOWNLOAD COMPLETE</b>\n\n"
                 f"🎬 {safe_title}\n"
-                f"📺 Quality: {quality_tag}\n"
-                f"📦 Size: {formatted_size}\n"
-                f"⏱ Duration: {formatted_duration}\n\n"
+                f"📺 Quality: <b>{quality_tag}</b>\n"
+                f"📦 Size: <b>{formatted_size}</b>\n"
+                f"⏱ Duration: <b>{formatted_duration}</b>\n\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                f"⚡ <b>Download:</b> {dl_duration:.1f}s ({dl_speed_mbs:.2f} MB/s)\n"
+                f"⚡ <b>Upload:</b> {ul_duration:.1f}s ({ul_speed_mbs:.2f} MB/s)\n"
+                f"🕒 <b>Total Time:</b> {total_pipeline_duration:.1f}s\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
                 "✨ <i>Delivered successfully to Telegram</i>"
             )
             try:
@@ -772,20 +784,63 @@ async def _update_progress(message, extraction, progress: DownloadProgress):
         )
 
         if progress.downloaded_bytes > 0:
-            text += f"📦 Downloaded: {format_size(progress.downloaded_bytes)}\n"
-        if progress.total_bytes > 0:
-            text += f"📊 Total: {format_size(progress.total_bytes)}\n"
-        if progress.speed > 0:
-            text += f"⚡ Speed: {format_speed(progress.speed)}\n"
-        if progress.eta is not None and progress.eta > 0:
-            text += f"⏳ ETA: {format_eta(progress.eta)}\n"
+            text += f"📦 <b>Downloaded:</b> {format_size(progress.downloaded_bytes)}"
+            if progress.total_bytes > 0:
+                text += f" / {format_size(progress.total_bytes)}"
+            text += "\n"
+        elif progress.total_bytes > 0:
+            text += f"📊 <b>Total:</b> {format_size(progress.total_bytes)}\n"
 
-        text += "\n<i>Status: Downloading streams...</i>"
+        if progress.speed > 0:
+            text += f"⚡ <b>Download Speed:</b> {format_speed(progress.speed)}\n"
+        if progress.eta is not None and progress.eta > 0:
+            text += f"⏳ <b>ETA:</b> {format_eta(progress.eta)}\n"
+
+        text += "\n<i>Status: Downloading streams concurrently...</i>"
 
         await message.edit_text(
             text,
             reply_markup=cancel_keyboard(),
             parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        pass
+
+
+async def _update_upload_progress(
+    message, extraction, current: int, total: int, start_time: float, job_id: str
+):
+    """Update the upload progress message in Telegram asynchronously without blocking upload workers."""
+    try:
+        elapsed = max(0.001, time.monotonic() - start_time)
+        speed = current / elapsed if elapsed > 0 else 0.0
+        pct = (current / total * 100) if total > 0 else 0
+        remaining = max(0, total - current)
+        eta = (remaining / speed) if speed > 0 and total > 0 else None
+        bar = make_progress_bar(pct / 100)
+
+        safe_title = html.escape(extraction.title) if extraction and extraction.title else "Video"
+        text = (
+            f"📤 <b>UPLOADING TO TELEGRAM</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎬 <b>{safe_title}</b>\n\n"
+            f"{bar} {pct:.0f}%\n\n"
+            f"⚡ <b>Upload Speed:</b> {format_speed(speed)}\n"
+        )
+        if eta is not None and eta > 0:
+            text += f"⏳ <b>ETA:</b> {format_eta(eta)}\n"
+        text += (
+            f"📦 <b>Transferred:</b> {format_size(current)} / {format_size(total)}\n\n"
+            f"<i>Status: Uploading to Telegram...</i>"
+        )
+
+        await message.edit_text(text, parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+    try:
+        await JobRepository.update_progress(
+            job_id, upload_progress=pct, file_size=total
         )
     except Exception:
         pass
