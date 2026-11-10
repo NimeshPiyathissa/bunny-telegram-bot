@@ -26,7 +26,7 @@ LimitNPROC=4096
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=read-only
-ReadWritePaths=/opt/bunny-stream-telegram-downloader/data /opt/bunny-stream-telegram-downloader/downloads /opt/bunny-stream-telegram-downloader/temp /opt/bunny-stream-telegram-downloader/logs
+ReadWritePaths=/opt/bunny-stream-telegram-downloader/data /opt/bunny-stream-telegram-downloader/downloads /opt/bunny-stream-telegram-downloader/temp /opt/bunny-stream-telegram-downloader/logs /opt/bunny-stream-telegram-downloader/backups
 NoNewPrivileges=true
 
 [Install]

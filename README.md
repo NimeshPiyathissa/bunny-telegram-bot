@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-0A84FF?style=for-the-badge&logo=github&logoColor=white" alt="Release v1.0.0"/></a>
+  <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/releases/tag/v1.0.1"><img src="https://img.shields.io/badge/Release-v1.0.1-0A84FF?style=for-the-badge&logo=github&logoColor=white" alt="Release v1.0.1"/></a>
   <a href="https://github.com/NimeshPiyathissa/bunny-telegram-bot/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-34C759?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"/></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"/></a>
   <a href="https://ffmpeg.org/"><img src="https://img.shields.io/badge/FFmpeg-7.0+-007808?style=for-the-badge&logo=ffmpeg&logoColor=white" alt="FFmpeg"/></a>
@@ -407,10 +407,43 @@ Verifies backup archive integrity with `PRAGMA integrity_check`, safely stops th
 bash scripts/restore.sh backups/bot_db_20261108_120000.db
 ```
 
-### 3. Zero-Downtime Application Update
-Safely pulls updates, updates dependencies, verifies database schema, and **executes the automated test suite** before restarting the systemd service. If tests fail, update halts without restarting the service.
+### 3. Zero-Downtime Application Update (Upgrading from v1.0.0 to v1.0.1)
+The update utility automatically creates a pre-update atomic database backup, pulls the latest release code, updates Python dependencies in `.venv` (including C-accelerated crypto modules), validates the database schema, and **executes the complete 100-test automated suite** before restarting the systemd service. If any test fails, the update automatically aborts without touching the running service.
+
+#### Automated Update (Recommended):
 ```bash
+cd /opt/bunny-bot
 bash scripts/update.sh
+```
+
+#### Manual Step-by-Step Upgrade:
+If you prefer manual control:
+```bash
+cd /opt/bunny-bot
+
+# 1. Take safety backup
+bash scripts/backup.sh
+
+# 2. Pull v1.0.1 release tag or main branch
+git fetch --tags
+git checkout v1.0.1
+
+# 3. Update virtualenv packages (installs cryptg and tgcrypto C-extensions)
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements.txt
+
+# 4. Verify new optional concurrency settings in .env
+# (Default fallback values: HLS_CONCURRENT_SEGMENTS=10, MAX_CONCURRENT_TRANSMISSIONS=4)
+
+# 5. Run automated test suite
+.venv/bin/pytest -v --tb=short
+
+# 6. Restart systemd service
+sudo systemctl restart bunny-bot
+
+# 7. Check health and live service logs
+bash scripts/healthcheck.sh
+sudo journalctl -u bunny-bot -f -n 50
 ```
 
 ### 4. System Health Diagnostics
@@ -535,7 +568,9 @@ pytest -v --tb=short
 | **`tests/test_security.py`** | SSRF blocks against private IP spaces, cloud metadata addresses, and command injection attacks | **5 Passed** |
 | **`tests/test_handlers.py`** | HTML parser compatibility with Telegram message length constraints and menu routing | **8 Passed** |
 | **`tests/test_speed_optimizations.py`** | Concurrent HLS downloading, token preservation, C-crypto benchmarks, multi-session uploads, and fallback routines | **13 Passed** |
+| **`tests/test_upload_cancellation_and_compat.py`** | Upload cancellation propagation, Pyrogram StopTransmission import compatibility, worker thread loop safety, null writer crash prevention, and file handle lifecycle | **11 Passed** |
 | **`tests/test_vps_release.py`** | Delivery lifecycle contract, safe deletion, SQLite WAL mode & concurrency, and deployment script validation | **12 Passed** |
+| **Total Automated Tests** | **Comprehensive Regression & Release Verification Suite** | **100 Passed (100%)** |
 
 ---
 

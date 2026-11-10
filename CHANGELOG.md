@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2026-11-09
+## [1.0.1] - 2026-11-10
 
-### Performance Optimization Update: High-Speed Concurrent Downloads & Telegram Uploads
+### Performance Optimizations, MTProto Acceleration & Critical Upload Hotfixes
 
-An exhaustive performance audit and acceleration suite addressing download and upload throughput bottlenecks:
+An exhaustive performance audit, concurrency acceleration, and critical stability release addressing download and upload throughput bottlenecks:
 
 #### ⚡ High-Speed Concurrent HLS Segment Downloader
 - **Parallel Multi-Segment Fetching**: Engineered `ConcurrentHLSDownloader` utilizing persistent `aiohttp` connection pooling (`TCPConnector(limit=30, keepalive_timeout=60, ttl_dns_cache=300)`).
@@ -51,7 +51,9 @@ An exhaustive performance audit and acceleration suite addressing download and u
 
 ---
 
-### Initial Release Candidate (v1.0.0-rc1) - 2026-11-08
+## [1.0.0] - 2026-11-08
+
+### Initial Production Release - Bunny Stream to Telegram Downloader
 
 Welcome to the initial public release of **Bunny Stream to Telegram Downloader**, an enterprise-grade asynchronous Telegram bot engineered to ingest authorized Bunny Stream media embeds, remux adaptive audio/video tracks, and deliver crystal-clear MP4 videos directly to Telegram.
 
