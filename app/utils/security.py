@@ -17,6 +17,7 @@ ALLOWED_DOMAINS = {
     "iframe.mediadelivery.net",
     "video.bunnycdn.com",
     "vz-cdn.net",
+    "b-cdn.net",
 }
 
 # Blocked IP ranges (SSRF protection)
@@ -185,3 +186,122 @@ def sanitize_subprocess_arg(arg: str) -> str:
     # Remove null bytes and control characters
     arg = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', arg)
     return arg
+
+
+def normalize_url(raw_url: str) -> str:
+    """Normalize extracted URL safely while preserving query parameters and tokens.
+
+    Strips trailing sentence punctuation, unclosed brackets, and surrounding quotes.
+    """
+    if not raw_url or not isinstance(raw_url, str):
+        return ""
+
+    url = raw_url.strip()
+    # Strip wrapping quotes, brackets, angle brackets
+    url = url.strip('\'"`<>')
+
+    # If wrapped in balanced parentheses, brackets or braces, strip outer pair
+    while (
+        (url.startswith("(") and url.endswith(")")) or
+        (url.startswith("[") and url.endswith("]")) or
+        (url.startswith("{") and url.endswith("}")) or
+        (url.startswith("<") and url.endswith(">"))
+    ):
+        url = url[1:-1].strip()
+
+    # Strip trailing punctuation that is not part of query parameters/path
+    # (e.g. sentences ending in '.', ',', ';', '!', or unclosed ')')
+    while url:
+        if url.endswith(('"', "'", '>', '`')):
+            url = url[:-1]
+        elif url.endswith(('.', ',', ';', ':', '!', '?')):
+            url = url[:-1]
+        elif url.endswith(')') and url.count('(') < url.count(')'):
+            url = url[:-1]
+        elif url.endswith(']') and url.count('[') < url.count(']'):
+            url = url[:-1]
+        elif url.endswith('}') and url.count('{') < url.count('}'):
+            url = url[:-1]
+        else:
+            break
+
+    return url.strip()
+
+
+def extract_urls(text: Optional[str], entities: Optional[list] = None) -> list[str]:
+    """Extract and normalize all URLs from text and Telegram message entities.
+
+    Preserves query parameters, tokens, and order while removing duplicates.
+    Supports plain text URLs, surrounding text, and Telegram URL/TEXT_LINK entities.
+    """
+    found_urls: list[str] = []
+    seen: set = set()
+
+    def _add_url(u: Optional[str]):
+        if not u:
+            return
+        cleaned = normalize_url(u)
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            found_urls.append(cleaned)
+
+    # 1. Extract from Telegram entities if present
+    if entities:
+        for ent in entities:
+            # Check type safely whether it's an enum, object, or mock
+            ent_type = getattr(ent, "type", None)
+            ent_type_str = getattr(ent_type, "name", str(ent_type)).lower()
+
+            if "text_link" in ent_type_str and getattr(ent, "url", None):
+                _add_url(ent.url)
+            elif "url" in ent_type_str and text:
+                offset = getattr(ent, "offset", 0)
+                length = getattr(ent, "length", 0)
+                if length > 0:
+                    raw_u = text[offset : offset + length]
+                    _add_url(raw_u)
+
+    # 2. Extract from plain text using regex
+    if text:
+        url_pattern = re.compile(r'https?://[^\s<>"]+', re.IGNORECASE)
+        for match in url_pattern.finditer(text):
+            _add_url(match.group(0))
+
+    return found_urls
+
+
+def sanitize_url_for_logging(url: str) -> str:
+    """Sanitize URL to prevent leaking sensitive tokens or query parameters in logs."""
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+        if not parsed.query:
+            return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        # Keep param keys but redact values
+        parts = []
+        for pair in parsed.query.split("&"):
+            if "=" in pair:
+                k, _ = pair.split("=", 1)
+                parts.append(f"{k}=[redacted]")
+            else:
+                parts.append(pair)
+        redacted_query = "&".join(parts)
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{redacted_query}"
+    except Exception:
+        return "[redacted-url]"
+
+
+def sanitize_url_for_display(url: str, max_length: int = 80) -> str:
+    """Format URL safely for Telegram HTML UI display without exposing full token."""
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+        display = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        if len(display) > max_length:
+            return display[:max_length - 3] + "..."
+        return display
+    except Exception:
+        return url[:max_length]
+

@@ -23,6 +23,7 @@ class PendingJob:
     caption_entities: Optional[List[Any]] = None
     prompt_message_id: Optional[int] = None
     chat_id: Optional[int] = None
+    candidate_url: Optional[str] = None
 
 
 # Thread/task-safe in-memory storage of pending flows per user

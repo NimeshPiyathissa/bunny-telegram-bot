@@ -82,6 +82,7 @@ sudo bash scripts/install_service.sh
 
 | Capability | Technical Implementation | Benefit |
 | :--- | :--- | :--- |
+| **🔗 Smart Auto-Link Detection** | Global URL handler, Telegram entity parsing, and safe normalization | Detects supported video links directly in private chat without `/start`, with conversational text support and conflict resolution. |
 | **🎥 Intelligent Bunny Stream Ingestion** | yt-dlp & HLS Master Parser with regex URL intake | Resolves `iframe.mediadelivery.net` embeds, queries dynamic manifests, and renders only available resolutions (360p to 4K). |
 | **⚡ Concurrent HLS Downloader** | Multi-connection aiohttp segment pool (`HLS_CONCURRENT_SEGMENTS=10`) | Downloads up to 10 video segments simultaneously with stream-copy remuxing (`-c copy`), cutting download time to ~15s (10.9 MB/s). |
 | **🚀 Accelerated Multi-Session Upload** | C-Crypto (`cryptg`/`tgcrypto`) + 4 parallel MTProto sessions | 1,433x crypto acceleration (0.76s for 163 MB) with multi-socket Telegram transmission and non-blocking progress dispatch (~11.8 MB/s). |
@@ -96,6 +97,14 @@ sudo bash scripts/install_service.sh
 ---
 
 ### Detailed Feature Breakdown
+
+#### 🔗 Smart Auto-Link Detection & Dual Entry Modes (NEW v1.0.2)
+- **Zero-Friction Direct Ingestion (Mode B)**: Users can directly paste supported Bunny Stream links (`iframe.mediadelivery.net`, `video.bunnycdn.com`, `*.b-cdn.net`) into private chat without running `/start` or tapping "Download Video".
+- **Conversational & Entity Parsing**: Extracts URLs from plain text, surrounding conversational text (e.g., `"Download this: https://... please"`), Telegram `URL` entities, and `TEXT_LINK` (hyperlinks).
+- **Safe Normalization & Token Preservation**: Strips trailing punctuation, unmatched quotes, and brackets while strictly preserving HMAC signatures, auth tokens, and URL parameters.
+- **Untrusted Domain Isolation**: Strictly rejects arbitrary or third-party URLs (e.g. YouTube, Google) with friendly notices without making external requests.
+- **Workflow Conflict Handling**: If a user sends a new link while an unfinished configuration is in progress, the bot offers an interactive choice to **Continue Current** or **Replace with New Link**.
+- **Full Backward Compatibility (Mode A)**: Preserves `/start` ➔ `📥 Download Video` ➔ URL submission ➔ Quality selection ➔ Caption/Skip flow.
 
 #### 🎥 Intelligent Bunny Stream Ingestion
 - **Embed URL Parsing**: Resolves standard Bunny Stream web player embeds (`https://iframe.mediadelivery.net/embed/{library_id}/{video_guid}`) into authorized master HLS playlists and CDN endpoints.
@@ -200,7 +209,83 @@ sequenceDiagram
 
 ## 📱 User Experience & Visual Interface
 
-### 1. Interactive Main Menu
+### Dual Download Entry Modes
+
+```text
+┌──────────────────────────────────────┐       ┌──────────────────────────────────────┐
+│       MODE A: CLASSIC WORKFLOW       │       │    MODE B: SMART DIRECT-LINK (NEW)   │
+└──────────────────────────────────────┘       └──────────────────────────────────────┘
+                   │                                              │
+                   ▼                                              ▼
+           User sends /start                               User pastes direct URL
+                   │                                              │
+                   ▼                                              ▼
+       Taps [📥 Download Video]                         "🔗 Video Link Detected!
+                   │                                     🔍 Analyzing video...
+                   ▼                                     🎬 Fetching available qualities..."
+            Sends Video URL                                       │
+                   │                                              │
+                   └──────────────────────┬───────────────────────┘
+                                          │
+                                          ▼
+                                   🎬 VIDEO DETECTED
+                                (Select Quality Matrix)
+                                          │
+                                          ▼
+                                ✍️ CUSTOM RICH CAPTION
+                                 (or [⏭️ Skip Caption])
+                                          │
+                                          ▼
+                                 ✅ CONFIRM DOWNLOAD
+                                          │
+                                          ▼
+                               ⚡ HIGH-SPEED PIPELINE
+                              (HLS Parallel Fetch + MTProto)
+```
+
+### 1. Mode B: Direct Link Detection
+```text
+User pastes supported Bunny URL directly:
+https://iframe.mediadelivery.net/embed/346396/af5aa834-acd6-47bc-a800-32ad1a8f7d92?token=xyz
+   │
+   ▼
+🔗 Video Link Detected!
+🔍 Analyzing video...
+🎬 Fetching available qualities...
+   │
+   ▼
+🎬 VIDEO DETECTED
+━━━━━━━━━━━━━━━━━━
+📺 Title: Advanced Fluid Dynamics
+⏱️ Duration: 00:45:12
+Available qualities:
+[ 360p (180 MB) ]    [ 480p (310 MB) ]
+[ 720p (750 MB) ]    [ 1080p (1.4 GB) ]
+[ ⭐ Best Available ]
+[ ❌ Cancel ]
+```
+
+### 2. Workflow Conflict Resolution
+```text
+User sends a new link while an unfinished configuration is pending:
+   │
+   ▼
+⚠️ Unfinished Download in Progress
+━━━━━━━━━━━━━━━━━━
+You already have an unfinished download setup:
+🎬 Current: Advanced Fluid Dynamics
+📌 Step: Selecting quality
+
+🔗 New Link Detected:
+https://iframe.mediadelivery.net/embed/346396/bbbbbbbb-11...
+
+Would you like to continue configuring your current video or replace it with the new link?
+
+[ ▶️ Continue Current ]    [ 🔄 Replace with New Link ]
+[ ❌ Cancel ]
+```
+
+### 3. Interactive Main Menu (Mode A)
 ```text
 /start
    │

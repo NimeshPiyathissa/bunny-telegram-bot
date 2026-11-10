@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-11-10
+
+### Smart Auto-Link Detection & Dual-Entry Download Workflows
+
+A major feature release introducing intelligent direct-link detection, dual entry download workflows, surrounding text parsing, entity extraction, and safe workflow conflict resolution:
+
+#### 🔗 Smart Direct-Link Detection (Mode B)
+- **Zero-Friction Ingestion**: Users can paste supported Bunny Stream and mediadelivery.net video URLs directly into the bot's private chat without typing `/start` or clicking "Download Video".
+- **Automatic User Onboarding**: Automatically detects new users and initializes user records seamlessly upon direct URL reception without requiring prior `/start` initialization.
+- **Immediate Detection Feedback**: Instantly acknowledges incoming links with the premium visual prompt:
+  ```text
+  🔗 Video Link Detected!
+  🔍 Analyzing video...
+  🎬 Fetching available qualities...
+  ```
+- **Unified Quality & Caption Flow**: Direct links seamlessly transition to the exact same interactive quality selection matrix, optional rich caption prompt, and multi-session download pipeline as Mode A.
+
+#### 🎯 Dual Download Entry Modes (Mode A & Mode B)
+- **Mode A (Classic Download)**: `/start` ➔ `📥 Download Video` ➔ Send URL ➔ Select Quality ➔ Caption/Skip ➔ High-Speed Processing & Upload.
+- **Mode B (Smart Direct-Link)**: Directly paste URL ➔ Video Link Detected ➔ Select Quality ➔ Caption/Skip ➔ High-Speed Processing & Upload.
+- Both modes share identical underlying business logic, database transaction models, and performance optimizations with zero duplication.
+
+#### 🧠 Intelligent URL Detection & Safe Normalization
+- **Entity & Plain-Text Extraction (`app/utils/security.py`)**: Detects URLs across plain text, Telegram `URL` entities, and `TEXT_LINK` (hyperlinked text) entities.
+- **Conversational Surrounding Text Support**: Safely extracts valid Bunny URLs embedded within multi-line messages, sentences, and punctuation (e.g. `Check this out: https://... please!`).
+- **Punctuation & Quote Stripping**: `normalize_url` strips trailing sentence punctuation (`.`, `,`, `;`, `!`), unbalanced brackets/parentheses, and surrounding quotes while preserving query string parameters and tokens.
+- **Signed Token & Parameter Preservation**: Fully preserves HMAC tokens, expiries, and access tokens for protected Bunny Stream endpoints.
+- **Untrusted Domain Isolation**: Strictly validates against `ALLOWED_DOMAINS` (`iframe.mediadelivery.net`, `video.bunnycdn.com`, `vz-cdn.net`, `*.b-cdn.net`). Arbitrary or untrusted domains (e.g., YouTube, Google, third-party sites) are rejected gracefully without triggering external HTTP requests or yt-dlp probing.
+- **Credential & Log Redaction**: `sanitize_url_for_logging` redacts sensitive token parameters in system logs (`token=[redacted]`).
+
+#### 🔄 Interactive Workflow Conflict Resolution
+- **Unfinished Setup Guard**: If a user pastes a new video link while an unfinished configuration is active (`SELECTING_QUALITY`, `WAITING_FOR_CAPTION`, `CONFIRMING_DOWNLOAD`), the bot presents an interactive conflict menu:
+  - `[ ▶️ Continue Current ]`: Discards the candidate link and restores the existing video's setup screen.
+  - `[ 🔄 Replace with New Link ]`: Cleanly clears the previous state and immediately analyzes the new link.
+  - `[ ❌ Cancel ]`: Cancels all active downloads and pending states.
+- **Active Job Protection**: Users with active downloads/uploads are prevented from creating accidental duplicate jobs.
+
+#### 🧪 Comprehensive Regression Test Suite
+- Added 15 automated integration tests in `tests/test_auto_link_detection.py` and expanded `tests/test_urls.py`.
+- Covers direct link without `/start`, classic Mode A compatibility, surrounding text, Telegram entities, untrusted domain isolation, multiple users, active job conflicts, workflow continue/replace, and end-to-end pipeline submission.
+- Full test suite expanded to **120 tests passing in ~19s** with 100% success rate.
+
+---
+
 ## [1.0.1] - 2026-11-10
 
 ### Performance Optimizations, MTProto Acceleration & Critical Upload Hotfixes

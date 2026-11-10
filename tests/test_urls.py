@@ -3,6 +3,10 @@ from app.utils.security import (
     validate_url,
     is_bunny_url,
     parse_bunny_embed_url,
+    normalize_url,
+    extract_urls,
+    sanitize_url_for_logging,
+    sanitize_url_for_display,
 )
 
 PRIMARY_TEST_URL = (
@@ -85,3 +89,96 @@ def test_url_length_limit():
     valid, err = validate_url(long_url)
     assert valid is False
     assert "too long" in err.lower()
+
+
+def test_normalize_url_variations():
+    """Verify URL normalization removes surrounding quotes, angle brackets, and trailing sentence punctuation."""
+    target = "https://iframe.mediadelivery.net/embed/346396/af5aa834-acd6-47bc-a800-32ad1a8f7d92?token=abc-123_456"
+
+    # Trailing periods, commas, colons, exclamation marks
+    assert normalize_url(target + ".") == target
+    assert normalize_url(target + ",") == target
+    assert normalize_url(target + "!") == target
+    assert normalize_url(target + ";") == target
+
+    # Unmatched parentheses and brackets
+    assert normalize_url(f"({target})") == target
+    assert normalize_url(f"[{target}]") == target
+    assert normalize_url(f"<{target}>") == target
+    assert normalize_url(f'"{target}"') == target
+    assert normalize_url(f"'{target}'") == target
+
+    # Preserves internal query params, equals, ampersands, dashes, and underscores
+    assert normalize_url(target) == target
+
+    # Empty or non-string input
+    assert normalize_url("") == ""
+    assert normalize_url(None) == ""  # type: ignore
+
+
+def test_extract_urls_from_plain_text_and_surrounding_text():
+    """Verify extraction of Bunny URLs with arbitrary surrounding text."""
+    text = (
+        "Hello bot! Please download this lecture for me:\n"
+        "https://iframe.mediadelivery.net/embed/123/af5aa834-acd6-47bc-a800-32ad1a8f7d92?autoplay=false.\n"
+        "Thank you so much!"
+    )
+    urls = extract_urls(text)
+    assert len(urls) == 1
+    assert urls[0] == "https://iframe.mediadelivery.net/embed/123/af5aa834-acd6-47bc-a800-32ad1a8f7d92?autoplay=false"
+
+
+def test_extract_urls_from_telegram_entities():
+    """Verify extraction from both URL and TEXT_LINK Telegram message entities."""
+    from pyrogram.enums import MessageEntityType
+    from pyrogram.types import MessageEntity
+
+    text = "Check this direct link and also this custom hyperlinked video."
+    ent_url = MessageEntity(
+        type=MessageEntityType.URL,
+        offset=11,
+        length=11,  # "direct link"
+    )
+    ent_text_link = MessageEntity(
+        type=MessageEntityType.TEXT_LINK,
+        offset=37,
+        length=25,
+        url="https://iframe.mediadelivery.net/embed/555/af5aa834-acd6-47bc-a800-32ad1a8f7d92?token=secret999",
+    )
+
+    # When entity points to URL text
+    full_text = "Here is https://iframe.mediadelivery.net/embed/111/af5aa834-acd6-47bc-a800-32ad1a8f7d92 and extra"
+    ent_url_real = MessageEntity(
+        type=MessageEntityType.URL,
+        offset=8,
+        length=80,
+    )
+
+    extracted = extract_urls(full_text, [ent_url_real, ent_text_link])
+    assert len(extracted) == 2
+    assert "111" in extracted[0]
+    assert "555" in extracted[1]
+    assert "token=secret999" in extracted[1]
+
+
+def test_sanitize_url_for_logging():
+    """Verify sensitive tokens and keys in query string are redacted in logs."""
+    raw = "https://iframe.mediadelivery.net/embed/123/uuid?token=SECRET_TOKEN_XYZ&expires=1700000000&autoplay=true"
+    sanitized = sanitize_url_for_logging(raw)
+    assert "SECRET_TOKEN_XYZ" not in sanitized
+    assert "token=[redacted]" in sanitized
+    assert "expires=[redacted]" in sanitized
+    assert "autoplay=[redacted]" in sanitized
+
+    # URL without query string
+    simple = "https://iframe.mediadelivery.net/embed/123/uuid"
+    assert sanitize_url_for_logging(simple) == simple
+
+
+def test_sanitize_url_for_display():
+    """Verify display URL formatting safely trims and removes query tokens for UI presentation."""
+    raw = "https://iframe.mediadelivery.net/embed/123/af5aa834-acd6-47bc-a800-32ad1a8f7d92?token=SUPER_LONG_TOKEN_STRING"
+    display = sanitize_url_for_display(raw, max_length=65)
+    assert "token=" not in display
+    assert display.startswith("https://iframe.mediadelivery.net/embed/123/af5aa834-")
+
